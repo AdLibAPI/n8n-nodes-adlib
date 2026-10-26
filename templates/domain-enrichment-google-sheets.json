@@ -1,0 +1,156 @@
+{
+  "name": "AdLib: is this domain advertising? (Google Sheets enrichment)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "c1000000-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read domains",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [220, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "id": "c1000000-0000-4000-8000-000000000002"
+    },
+    {
+      "parameters": {
+        "resource": "domain",
+        "operation": "check",
+        "domain": "={{ $json.domain }}",
+        "options": {}
+      },
+      "name": "Is it advertising?",
+      "type": "n8n-nodes-adlib.adLib",
+      "typeVersion": 1,
+      "position": [440, 0],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "adLibApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "AdLib account"
+        }
+      },
+      "id": "c1000000-0000-4000-8000-000000000003"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1000000-0000-4000-8000-000000000010",
+              "name": "domain",
+              "value": "={{ $('Read domains').item.json.domain }}",
+              "type": "string"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000011",
+              "name": "advertising",
+              "value": "={{ $json.advertising === null || $json.advertising === undefined ? 'unknown' : ($json.advertising ? 'yes' : 'no') }}",
+              "type": "string"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000012",
+              "name": "platforms",
+              "value": "={{ ($json.platforms ?? []).filter((p) => p.advertising).map((p) => p.platform).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000013",
+              "name": "active_ads",
+              "value": "={{ ($json.platforms ?? []).reduce((sum, p) => sum + (p.active_ads ?? 0), 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000014",
+              "name": "checked_at",
+              "value": "={{ $json.checked_at ?? $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Shape row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, 0],
+      "id": "c1000000-0000-4000-8000-000000000004"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": ["domain"]
+        },
+        "options": {}
+      },
+      "name": "Write back",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [880, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "id": "c1000000-0000-4000-8000-000000000005"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Read domains", "type": "main", "index": 0 }]]
+    },
+    "Read domains": {
+      "main": [[{ "node": "Is it advertising?", "type": "main", "index": 0 }]]
+    },
+    "Is it advertising?": {
+      "main": [[{ "node": "Shape row", "type": "main", "index": 0 }]]
+    },
+    "Shape row": {
+      "main": [[{ "node": "Write back", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

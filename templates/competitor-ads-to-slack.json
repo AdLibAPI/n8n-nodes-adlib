@@ -1,0 +1,99 @@
+{
+  "name": "AdLib: new competitor ads to Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "watchBy": "domain",
+        "domain": "competitor.com",
+        "minScore": 0.6,
+        "maxPerPlatform": 1,
+        "intervalHours": 24,
+        "options": {
+          "splitIntoAds": true
+        }
+      },
+      "name": "AdLib Trigger",
+      "type": "n8n-nodes-adlib.adLibTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "b1000000-0000-4000-8000-000000000001",
+      "credentials": {
+        "adLibApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "AdLib account"
+        }
+      },
+      "id": "b1000000-0000-4000-8000-000000000002"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "b1000000-0000-4000-8000-000000000010",
+              "leftValue": "={{ ['new', 'started'].includes($json.change) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Only new ads",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [220, 0],
+      "id": "b1000000-0000-4000-8000-000000000003"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#competitor-ads",
+          "mode": "name"
+        },
+        "text": "=:mega: *{{ $json.ad?.advertiser?.name ?? $json.advertiser_id }}* started a new ad on *{{ $json.ad?.platform ?? $json.ad_id.split(':')[0] }}*\n> {{ ($json.ad?.creatives?.[0]?.headline ?? $json.ad?.creatives?.[0]?.text ?? '(no text)').slice(0, 300) }}\nFirst shown: {{ $json.ad?.first_shown ?? $json.at }}\n{{ $json.ad?.library_url ?? '' }}",
+        "otherOptions": {
+          "unfurl_links": false
+        }
+      },
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [440, 0],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      },
+      "id": "b1000000-0000-4000-8000-000000000004"
+    }
+  ],
+  "connections": {
+    "AdLib Trigger": {
+      "main": [[{ "node": "Only new ads", "type": "main", "index": 0 }]]
+    },
+    "Only new ads": {
+      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
