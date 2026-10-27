@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "n8n community node for the AdLib API: search the public ad libraries of Meta, Google, TikTok, LinkedIn, Pinterest and X, resolve advertisers from a domain, check if a company is advertising, and get webhook alerts when competitors start, stop or change ads.",
 	"license": "MIT",
-	"homepage": "https://github.com/adlib/n8n-nodes-adlib",
+	"homepage": "https://github.com/AdLibAPI/n8n-nodes-adlib",
 	"keywords": [
 		"n8n-community-node-package",
 		"ad library",
@@ -22,7 +22,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/adlib/n8n-nodes-adlib.git"
+		"url": "git+https://github.com/AdLibAPI/n8n-nodes-adlib.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",

@@ -19,7 +19,7 @@ export class AdLibApi implements ICredentialType {
 
 	icon: Icon = { light: 'file:../icons/adlib.svg', dark: 'file:../icons/adlib.dark.svg' };
 
-	documentationUrl = 'https://github.com/adlib/n8n-nodes-adlib?tab=readme-ov-file#credentials';
+	documentationUrl = 'https://github.com/AdLibAPI/n8n-nodes-adlib?tab=readme-ov-file#credentials';
 
 	properties: INodeProperties[] = [
 		{
