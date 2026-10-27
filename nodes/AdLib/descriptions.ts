@@ -114,6 +114,12 @@ export const OPERATIONS: Record<
 			action: 'Check if a domain is advertising',
 			description: 'Is this company advertising right now, and on which platforms?',
 		},
+		{
+			name: 'Get Company Profile',
+			value: 'getCompany',
+			action: 'Get the company profile of a domain',
+			description: 'All ad accounts of a domain across platforms, with combined stats',
+		},
 	],
 	watchlist: [
 		{
@@ -529,6 +535,22 @@ const adProperties: INodeProperties[] = [
 				placeholder: '2026-01-01',
 				description: 'Shown on or after this date (YYYY-MM-DD)',
 			},
+			{
+				displayName: 'Political Ads',
+				name: 'political',
+				type: 'options',
+				options: [
+					{ name: 'Any', value: '' },
+					{ name: 'Exclude', value: 'false', description: 'No political or issue ads' },
+					{
+						name: 'Only',
+						value: 'true',
+						description:
+							'Only political or issue ads. Only Meta labels them, so this limits results to Meta.',
+					},
+				],
+				default: '',
+			},
 			rawOption,
 			{
 				displayName: 'Sort',
@@ -574,7 +596,7 @@ const domainProperties: INodeProperties[] = [
 		default: '',
 		placeholder: 'nike.com',
 		description: 'Company domain. A full URL also works, only the host is used.',
-		displayOptions: show('domain', ['check']),
+		displayOptions: show('domain', ['check', 'getCompany']),
 	},
 	{
 		displayName: 'Options',
@@ -591,6 +613,42 @@ const domainProperties: INodeProperties[] = [
 				options: PLATFORM_OPTIONS,
 				default: [],
 				description: 'Platforms to check. Leave empty for all.',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: show('domain', ['getCompany']),
+		options: [
+			{
+				displayName: 'Max per Platform',
+				name: 'maxPerPlatform',
+				type: 'number',
+				default: 5,
+				typeOptions: { minValue: 1, maxValue: 10 },
+				description:
+					'Most accounts per platform. Brands often run several (countries, product lines).',
+			},
+			{
+				displayName: 'Minimum Score',
+				name: 'minScore',
+				type: 'number',
+				default: 0.75,
+				typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
+				description:
+					'Accounts below this confidence score (0 to 1) are listed as candidates and not counted in the totals',
+			},
+			{
+				displayName: 'Platforms',
+				name: 'platforms',
+				type: 'multiOptions',
+				options: PLATFORM_OPTIONS,
+				default: [],
+				description: 'Platforms to include. Leave empty for all.',
 			},
 		],
 	},

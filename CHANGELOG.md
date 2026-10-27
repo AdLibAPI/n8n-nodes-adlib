@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- **Domain > Get Company Profile** (`GET /v1/companies/{domain}`): all ad accounts of a domain across platforms with combined stats, with Platforms, Minimum Score and Max per Platform options.
+- **Ad > Search**: **Political Ads** option (Any, Exclude, Only).
+- Hint for `403 history_limit` (ad older than the plan's archive window).
+
 ## [0.1.0] - 2026-10-26
 
 First version.

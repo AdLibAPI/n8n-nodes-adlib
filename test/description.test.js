@@ -35,7 +35,7 @@ test('all requested operations exist', () => {
 	const expected = {
 		advertiser: ['resolve', 'get', 'getAds', 'getChanges', 'getStats', 'getTimeline'],
 		ad: ['search', 'get', 'getHistory'],
-		domain: ['check'],
+		domain: ['check', 'getCompany'],
 		watchlist: ['create', 'get', 'list', 'addAdvertisers', 'removeAdvertiser', 'delete'],
 		batch: ['create', 'get'],
 		usage: ['get'],

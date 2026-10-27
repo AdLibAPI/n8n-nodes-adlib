@@ -58,6 +58,7 @@ When you save the credential, n8n tests it with `GET /v1/usage?days=1`.
 | Ad | Get | `GET /v1/ads/{id}` |
 | Ad | Get History | `GET /v1/ads/{id}/history` |
 | Domain | Check if Advertising | `GET /v1/domains/{domain}/check` |
+| Domain | Get Company Profile | `GET /v1/companies/{domain}` |
 | Watchlist | Create | `POST /v1/watchlists` |
 | Watchlist | Get | `GET /v1/watchlists/{id}` |
 | Watchlist | List | `GET /v1/watchlists` |
@@ -72,7 +73,9 @@ Notes:
 
 - IDs have the form `<platform>:<id>`, for example `meta:15087023444` (advertiser) or `meta:1234567890` (ad). **Advertiser > Resolve by Domain** gives you advertiser IDs; each candidate has a confidence `score` (0 to 1) and a `match_reason`. Use **Options > Minimum Score** to drop weak matches and **Split Into Items** to get one item per advertiser.
 - Domains can be entered as `nike.com` or as a full URL; only the host is sent.
-- **Ad > Search** needs exactly one of keyword, advertiser (name or ID) or domain. Without **Platforms**, all platforms that support the search are queried in parallel; platforms that fail are listed in `meta.errors` with **Raw Pages** and are not billed. **Source: History** searches the archive, including ads that are gone from the platforms; **Sort: Days Running** puts the longest-running ads (likely winners) first.
+- **Ad > Search** needs exactly one of keyword, advertiser (name or ID) or domain. Without **Platforms**, all platforms that support the search are queried in parallel; platforms that fail are listed in `meta.errors` with **Raw Pages** and are not billed. **Source: History** searches the archive, including ads that are gone from the platforms; **Sort: Days Running** puts the longest-running ads (likely winners) first. **Political Ads: Only** or **Exclude** filters political and issue ads (only Meta labels them, so **Only** limits results to Meta).
+- **Domain > Get Company Profile** returns all ad accounts of a domain across platforms (`accounts`, with score at least **Minimum Score**, default 0.75), per-platform totals and combined `stats`. Accounts below the threshold are listed as `candidates`. It costs one resolve plus one stats call.
+- **Watchlist > List** returns each watchlist with `advertiser_count` and `interval_hours`; the advertisers and their crawl status are in **Watchlist > Get**.
 - **Batch > Create** takes a list of advertiser IDs, domains or ad IDs; how many per job depends on your plan (the API documents up to 100, the node accepts at most 1,000). Poll it with **Batch > Get**, or pass a **Webhook URL** to be called when it is done. Results are kept 30 days.
 
 ## AdLib Trigger
@@ -138,6 +141,7 @@ The API answers errors as `{"error": {"code", "message", "request_id", …}}`. T
 
 - `401`: wrong API key or Base URL.
 - `402`: no credits left.
+- `403`: the key may not use this endpoint, or `history_limit`: the ad is older than your plan's archive window (free 90 days, starter 365 days, growth and up unlimited).
 - `404`: unknown advertiser, ad, watchlist or job ID.
 - `429`: rate limit. Wait, or turn on **Retry On Fail** in the node settings.
 

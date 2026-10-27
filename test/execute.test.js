@@ -67,6 +67,48 @@ test('Ad > Search with Return All follows next_cursor and outputs one item per a
 	assert.equal(ctx.requests[1].qs.cursor, 'c1');
 });
 
+test('Ad > Search sends the political filter', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'ad',
+			operation: 'search',
+			searchBy: 'q',
+			searchTerm: 'election',
+			returnAll: false,
+			limit: 10,
+			options: { political: 'true' },
+		},
+		() => ({ statusCode: 200, body: { data: [], next_cursor: null, meta: {} } }),
+	);
+	await new AdLib().execute.call(ctx);
+	assert.deepEqual(ctx.requests[0].qs, { q: 'election', political: 'true', limit: 10 });
+});
+
+test('Domain > Get Company Profile sends the domain and options', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'domain',
+			operation: 'getCompany',
+			domain: 'https://www.Audi.de/de',
+			options: { platforms: ['meta', 'google'], minScore: 0.5, maxPerPlatform: 3 },
+		},
+		() => ({
+			statusCode: 200,
+			body: { data: { domain: 'www.audi.de', name: 'Audi', accounts: [], platforms: [] } },
+		}),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(out.length, 1);
+	assert.equal(out[0].json.name, 'Audi');
+	assert.equal(ctx.requests[0].method, 'GET');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/companies/www.audi.de');
+	assert.deepEqual(ctx.requests[0].qs, {
+		platform: 'meta,google',
+		min_score: 0.5,
+		max_per_platform: 3,
+	});
+});
+
 test('API errors carry the AdLib message', async () => {
 	const ctx = fakeContext(
 		{ resource: 'ad', operation: 'get', adId: 'meta:9', options: {} },

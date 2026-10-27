@@ -19,7 +19,7 @@ const HINTS: Record<number, string> = {
 	400: 'The API rejected the request. Check the IDs, domain or filters you passed.',
 	401: 'Check the API key and the Base URL in the AdLib API credential.',
 	402: 'Your AdLib credits are used up. Top up your plan, then run the node again.',
-	403: 'The API key is not allowed to use this endpoint.',
+	403: "The API key is not allowed to use this endpoint, or (code history_limit) the ad is older than your plan's archive window.",
 	404: 'Nothing was found for the given ID or domain.',
 	422: 'One of the parameters has an invalid format, for example an advertiser ID without the "platform:" prefix.',
 	429: 'Rate limit reached. Wait a moment, or enable "Retry On Fail" in the node settings.',

@@ -165,6 +165,7 @@ async function runOperation(
 					from: options.from,
 					to: options.to,
 					format: options.format,
+					political: options.political,
 					source: options.source,
 					sort: options.sort,
 				},
@@ -185,14 +186,27 @@ async function runOperation(
 		}
 	}
 
-	if (resource === 'domain' && operation === 'check') {
+	if (resource === 'domain') {
 		const domain = cleanDomain(ctx.getNodeParameter('domain', i));
 		if (!domain) throw new NodeOperationError(ctx.getNode(), 'Domain is empty', { itemIndex: i });
-		return unwrap(
-			await adLibApiRequest.call(ctx, 'GET', `/v1/domains/${encodeSegment(domain)}/check`, {
-				qs: { platform: csv(options.platforms) },
-			}),
-		);
+		if (operation === 'check') {
+			return unwrap(
+				await adLibApiRequest.call(ctx, 'GET', `/v1/domains/${encodeSegment(domain)}/check`, {
+					qs: { platform: csv(options.platforms) },
+				}),
+			);
+		}
+		if (operation === 'getCompany') {
+			return unwrap(
+				await adLibApiRequest.call(ctx, 'GET', `/v1/companies/${encodeSegment(domain)}`, {
+					qs: {
+						platform: csv(options.platforms),
+						min_score: options.minScore as number | undefined,
+						max_per_platform: options.maxPerPlatform as number | undefined,
+					},
+				}),
+			);
+		}
 	}
 
 	if (resource === 'watchlist') {
