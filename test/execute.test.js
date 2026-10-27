@@ -90,7 +90,12 @@ test('Domain > Get Company Profile sends the domain and options', async () => {
 			resource: 'domain',
 			operation: 'getCompany',
 			domain: 'https://www.Audi.de/de',
-			options: { platforms: ['meta', 'google'], minScore: 0.5, maxPerPlatform: 3 },
+			options: {
+				platforms: ['meta', 'google'],
+				minScore: 0.5,
+				maxPerPlatform: 3,
+				includeRelated: true,
+			},
 		},
 		() => ({
 			statusCode: 200,
@@ -106,6 +111,7 @@ test('Domain > Get Company Profile sends the domain and options', async () => {
 		platform: 'meta,google',
 		min_score: 0.5,
 		max_per_platform: 3,
+		include_related: true,
 	});
 });
 

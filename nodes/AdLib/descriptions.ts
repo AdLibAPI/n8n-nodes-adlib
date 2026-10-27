@@ -625,6 +625,14 @@ const domainProperties: INodeProperties[] = [
 		displayOptions: show('domain', ['getCompany']),
 		options: [
 			{
+				displayName: 'Include Related Accounts',
+				name: 'includeRelated',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to count agency, reseller and partner accounts (listed under related) in the platform totals and stats too',
+			},
+			{
 				displayName: 'Max per Platform',
 				name: 'maxPerPlatform',
 				type: 'number',

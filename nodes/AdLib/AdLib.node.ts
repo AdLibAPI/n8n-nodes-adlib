@@ -203,6 +203,7 @@ async function runOperation(
 						platform: csv(options.platforms),
 						min_score: options.minScore as number | undefined,
 						max_per_platform: options.maxPerPlatform as number | undefined,
+						include_related: options.includeRelated === true ? true : undefined,
 					},
 				}),
 			);
