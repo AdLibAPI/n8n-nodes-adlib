@@ -40,7 +40,7 @@ test('apiErrorMessage reads the AdLib error format', () => {
 
 test('normalizeBaseUrl and compact', () => {
 	assert.equal(normalizeBaseUrl('https://x.test/// '), 'https://x.test');
-	assert.equal(normalizeBaseUrl(''), 'https://api.example.com');
+	assert.equal(normalizeBaseUrl(''), 'https://api.adlibapi.com');
 	assert.deepEqual(compact({ a: 1, b: undefined, c: '', d: null, e: [], f: false }), {
 		a: 1,
 		f: false,

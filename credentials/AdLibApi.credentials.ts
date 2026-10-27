@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const DEFAULT_BASE_URL = 'https://api.example.com';
+export const DEFAULT_BASE_URL = 'https://api.adlibapi.com';
 
 /** Base URL from the credential, without trailing slashes. Shared by the credential test and the nodes. */
 export const BASE_URL_EXPRESSION =

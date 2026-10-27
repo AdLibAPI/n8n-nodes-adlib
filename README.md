@@ -40,7 +40,7 @@ The **AdLib** and **AdLib Trigger** nodes then show up in the nodes panel. See t
 Create an **AdLib API** credential:
 
 - **API Key**: your AdLib API key. It is sent in the `X-API-Key` header.
-- **Base URL**: the root URL of the API, without `/v1`. Default `https://api.example.com`; change it if your account uses a different host.
+- **Base URL**: the root URL of the API, without `/v1`. Default `https://api.adlibapi.com`; change it if your account uses a different host.
 
 When you save the credential, n8n tests it with `GET /v1/usage?days=1`.
 

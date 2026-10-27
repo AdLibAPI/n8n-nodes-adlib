@@ -28,7 +28,7 @@ test('credential sends X-API-Key and tests GET /v1/usage', () => {
 	assert.equal(credential.test.request.url, '/v1/usage');
 	assert.equal(credential.test.request.method, 'GET');
 	const baseUrl = credential.properties.find((p) => p.name === 'baseUrl');
-	assert.equal(baseUrl.default, 'https://api.example.com');
+	assert.equal(baseUrl.default, 'https://api.adlibapi.com');
 });
 
 test('all requested operations exist', () => {
