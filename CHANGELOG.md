@@ -4,6 +4,7 @@
 
 ## [0.4.0] - 2026-10-28
 
+- **Ad > Get Ad Features**: **Include Transcript** (what is said, with times; +10 credits per started video minute) and **Include AI Read** (hook type, angles, emotions, audience, style; +5 credits).
 - **Ad > Get Ad Features** waits while the API is still analysing a video (it now answers 202 `processing` with `retry_after`, free) and asks again until the data is ready, for up to 2 minutes.
 
 ## [0.3.0] - 2026-10-28

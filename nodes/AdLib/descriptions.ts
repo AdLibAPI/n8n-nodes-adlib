@@ -124,7 +124,7 @@ export const OPERATIONS: Record<
 			value: 'getFeatures',
 			action: 'Get the creative features of an ad',
 			description:
-				'Hook, offers, urgency, social proof, format, video length, cuts and on-image text of an ad. Waits up to 2 minutes while a video is analysed.',
+				'Hook, offers, format, video length, cuts and on-screen text of an ad, optionally with transcript and AI read. Waits up to 2 minutes while a video is analysed.',
 		},
 		{
 			name: 'Get History',
@@ -619,6 +619,22 @@ const adProperties: INodeProperties[] = [
 		placeholder: 'meta:1234567890',
 		description: 'Our ad ID in the form platform:ad-ID (for example meta:1234567890)',
 		displayOptions: show('ad', ['get', 'getFeatures', 'getHistory']),
+	},
+	{
+		displayName: 'Include Transcript',
+		name: 'includeTranscript',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to add what is said in the videos, sentence by sentence with times (+10 credits per started video minute)',
+		displayOptions: show('ad', ['getFeatures']),
+	},
+	{
+		displayName: 'Include AI Read',
+		name: 'includeAi',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to add a summary, hook type, angles, emotions, audience, style, CTA and offer written by a language model (+5 credits)',
+		displayOptions: show('ad', ['getFeatures']),
 	},
 	{
 		displayName: 'Library URL',

@@ -234,9 +234,15 @@ async function runOperation(
 		if (operation === 'getFeatures') {
 			// A new video analysis answers 202 (processing, free): ask again after
 			// retry_after, for up to FEATURES_MAX_WAIT_S, then return what we have.
+			const include = [
+				ctx.getNodeParameter('includeTranscript', i, false) === true && 'transcript',
+				ctx.getNodeParameter('includeAi', i, false) === true && 'ai',
+			]
+				.filter(Boolean)
+				.join(',');
 			let waited = 0;
 			for (;;) {
-				const body = await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}/features`);
+				const body = await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}/features`, include ? { qs: { include } } : {});
 				const meta = (body.meta ?? {}) as IDataObject;
 				const delay = Math.max(1, Number(meta.retry_after) || 10);
 				if (meta.status !== 'processing' || waited + delay > FEATURES_MAX_WAIT_S) return unwrap(body);

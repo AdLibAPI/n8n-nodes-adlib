@@ -127,6 +127,15 @@ test('Ad > Get Ad Features returns the features with meta', async () => {
 	assert.equal(out[0].json._meta.ad_id, 'meta:1187430977361020');
 });
 
+test('Ad > Get Ad Features sends the optional parts', async () => {
+	const ctx = fakeContext(
+		{ resource: 'ad', operation: 'getFeatures', adId: 'tiktok:1', includeTranscript: true, includeAi: true },
+		() => ({ statusCode: 200, body: { data: { format: 'vertical_video' }, meta: { ad_id: 'tiktok:1', status: 'ready' } } }),
+	);
+	await new AdLib().execute.call(ctx);
+	assert.equal(ctx.requests[0].qs.include, 'transcript,ai');
+});
+
 test('Ad > Get Ad Features asks again while the API answers processing', async () => {
 	let n = 0;
 	const ctx = fakeContext({ resource: 'ad', operation: 'getFeatures', adId: 'tiktok:1' }, () =>
