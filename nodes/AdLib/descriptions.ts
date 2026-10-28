@@ -2,13 +2,24 @@ import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import { DEFAULT_MAX_PAGES } from './pagination';
 
 export const PLATFORM_OPTIONS: INodePropertyOptions[] = [
+	{ name: 'Amazon', value: 'amazon' },
+	{ name: 'Apple', value: 'apple' },
 	{ name: 'Google', value: 'google' },
 	{ name: 'LinkedIn', value: 'linkedin' },
 	{ name: 'Meta (Facebook, Instagram)', value: 'meta' },
+	{ name: 'Microsoft (Beta)', value: 'microsoft' },
 	{ name: 'Pinterest', value: 'pinterest' },
+	{ name: 'Snapchat', value: 'snapchat' },
 	{ name: 'TikTok', value: 'tiktok' },
 	{ name: 'X', value: 'x' },
 ];
+
+/** Search also takes youtube and play: Google ads on YouTube or Google Play. */
+export const SEARCH_PLATFORM_OPTIONS: INodePropertyOptions[] = [
+	...PLATFORM_OPTIONS,
+	{ name: 'Google Play (Google Ads on Play)', value: 'play' },
+	{ name: 'YouTube (Google Ads on YouTube)', value: 'youtube' },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const STATUS_OPTIONS: INodePropertyOptions[] = [
 	{ name: 'Active', value: 'active' },
@@ -94,10 +105,23 @@ export const OPERATIONS: Record<
 			description: 'Get one ad, live from its platform or from our archive',
 		},
 		{
+			name: 'Get Ad Features',
+			value: 'getFeatures',
+			action: 'Get the creative features of an ad',
+			description:
+				'Hook, offers, urgency, social proof, format, video length, cuts and on-image text of an ad',
+		},
+		{
 			name: 'Get History',
 			value: 'getHistory',
 			action: 'Get the history of an ad',
-			description: 'All observed versions and status changes of an ad',
+			description: 'All observed versions, status changes and daily EU reach of an ad',
+		},
+		{
+			name: 'Parse Library URL',
+			value: 'parseLibraryUrl',
+			action: 'Parse an ad library URL',
+			description: 'Turn a link copied from an ad library into an AdLib ad or advertiser ID',
 		},
 		{
 			name: 'Search',
@@ -131,7 +155,8 @@ export const OPERATIONS: Record<
 			name: 'Create',
 			value: 'create',
 			action: 'Create a watchlist',
-			description: 'Watch advertisers; they are crawled regularly and changes go to your webhook',
+			description:
+				'Watch advertisers; they are crawled regularly and changes go to your webhook or email',
 		},
 		{ name: 'Delete', value: 'delete', action: 'Delete a watchlist' },
 		{
@@ -145,6 +170,12 @@ export const OPERATIONS: Record<
 			name: 'Remove Advertiser',
 			value: 'removeAdvertiser',
 			action: 'Remove an advertiser from a watchlist',
+		},
+		{
+			name: 'Update',
+			value: 'update',
+			action: 'Update a watchlist',
+			description: "Change a watchlist's name, webhook URL or email alerts",
 		},
 	],
 	batch: [
@@ -393,6 +424,11 @@ const advertiserProperties: INodeProperties[] = [
 				options: [
 					{ name: 'Changed', value: 'changed' },
 					{ name: 'Discovered', value: 'discovered' },
+					{
+						name: 'Removed',
+						value: 'removed',
+						description: "The platform's library no longer shows the ad (AdLib keeps it)",
+					},
 					{ name: 'Started', value: 'started' },
 					{ name: 'Stopped', value: 'stopped' },
 				],
@@ -441,7 +477,18 @@ const adProperties: INodeProperties[] = [
 		default: '',
 		placeholder: 'meta:1234567890',
 		description: 'Our ad ID in the form platform:ad-ID (for example meta:1234567890)',
-		displayOptions: show('ad', ['get', 'getHistory']),
+		displayOptions: show('ad', ['get', 'getFeatures', 'getHistory']),
+	},
+	{
+		displayName: 'Library URL',
+		name: 'libraryUrl',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'https://www.linkedin.com/ad-library/detail/123456789',
+		description:
+			'A link copied from the Meta Ad Library, Google Ads Transparency Center, TikTok Ad Library, LinkedIn Ad Library, Pinterest Ads Repository or an X post',
+		displayOptions: show('ad', ['parseLibraryUrl']),
 	},
 	{
 		displayName: 'Options',
@@ -492,9 +539,10 @@ const adProperties: INodeProperties[] = [
 		displayName: 'Platforms',
 		name: 'platforms',
 		type: 'multiOptions',
-		options: PLATFORM_OPTIONS,
+		options: SEARCH_PLATFORM_OPTIONS,
 		default: [],
-		description: 'Platforms to search. Leave empty for all platforms that support the search.',
+		description:
+			'Platforms to search. Leave empty for all platforms that support the search. YouTube and Google Play are Google ads with that placement.',
 		displayOptions: show('ad', ['search']),
 	},
 	...paginationFields('ad', 'search'),
@@ -536,6 +584,22 @@ const adProperties: INodeProperties[] = [
 				description: 'Shown on or after this date (YYYY-MM-DD)',
 			},
 			{
+				displayName: 'Placement',
+				name: 'placement',
+				type: 'options',
+				options: [
+					{ name: 'Any', value: '' },
+					{ name: 'Google Maps', value: 'maps' },
+					{ name: 'Google Play', value: 'play' },
+					{ name: 'Google Search', value: 'search' },
+					{ name: 'Google Shopping', value: 'shopping' },
+					{ name: 'YouTube', value: 'youtube' },
+				],
+				default: '',
+				description:
+					'Google only: where the ad ran. Limits a live search to Google. YouTube with Format: Video gives YouTube video ads.',
+			},
+			{
 				displayName: 'Political Ads',
 				name: 'political',
 				type: 'options',
@@ -552,6 +616,27 @@ const adProperties: INodeProperties[] = [
 				default: '',
 			},
 			rawOption,
+			{
+				displayName: 'Removed Ads',
+				name: 'removed',
+				type: 'options',
+				options: [
+					{ name: 'Any', value: '' },
+					{
+						name: 'Exclude',
+						value: 'false',
+						description: "Only ads the platforms' libraries still show",
+					},
+					{
+						name: 'Only',
+						value: 'true',
+						description:
+							"Only ads the platforms' libraries no longer show (taken down, deleted or aged out), which AdLib kept",
+					},
+				],
+				default: '',
+				description: 'Only for Source: History',
+			},
 			{
 				displayName: 'Sort',
 				name: 'sort',
@@ -670,7 +755,13 @@ const watchlistProperties: INodeProperties[] = [
 		required: true,
 		default: '',
 		description: 'ID (UUID) of the watchlist',
-		displayOptions: show('watchlist', ['get', 'addAdvertisers', 'removeAdvertiser', 'delete']),
+		displayOptions: show('watchlist', [
+			'get',
+			'addAdvertisers',
+			'removeAdvertiser',
+			'update',
+			'delete',
+		]),
 	},
 	{
 		displayName: 'Advertiser IDs',
@@ -716,6 +807,14 @@ const watchlistProperties: INodeProperties[] = [
 				typeOptions: { minValue: 1, maxValue: 168 },
 			},
 			{
+				displayName: 'Email Alerts',
+				name: 'emailAlerts',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to mail a digest of each crawl's changes (new, stopped, changed, removed ads) to your account's email",
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -733,6 +832,39 @@ const watchlistProperties: INodeProperties[] = [
 		],
 	},
 ];
+
+watchlistProperties.push({
+	displayName: 'Update Fields',
+	name: 'updateFields',
+	type: 'collection',
+	placeholder: 'Add field',
+	default: {},
+	displayOptions: show('watchlist', ['update']),
+	options: [
+		{
+			displayName: 'Email Alerts',
+			name: 'emailAlerts',
+			type: 'boolean',
+			default: false,
+			description: "Whether to mail a digest of each crawl's changes to your account's email",
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Webhook URL',
+			name: 'webhookUrl',
+			type: 'string',
+			default: '',
+			placeholder: 'https://example.com/hooks/adlib',
+			description:
+				'New webhook URL. Slack and Discord webhook URLs get a readable message. Leave empty to remove the webhook.',
+		},
+	],
+});
 
 const batchProperties: INodeProperties[] = [
 	{

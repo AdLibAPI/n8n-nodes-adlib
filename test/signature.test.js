@@ -59,11 +59,12 @@ test('splitChanges emits one item per ad event with context', () => {
 		watchlist_id: 'w1',
 		advertiser_id: 'meta:1',
 		crawled_at: '2026-10-26T00:00:00Z',
-		summary: { new: 1, started: 0, stopped: 1, changed: 1 },
+		summary: { new: 1, started: 0, stopped: 1, changed: 1, removed: 1 },
 		new: [{ type: 'discovered', ad_id: 'meta:a' }],
 		started: [],
 		stopped: [{ type: 'stopped', ad_id: 'meta:b' }],
 		changed: [{ type: 'changed', ad_id: 'meta:c' }],
+		removed: [{ type: 'removed', ad_id: 'meta:d' }],
 	};
 	const items = splitChanges(event);
 	assert.deepEqual(
@@ -72,6 +73,7 @@ test('splitChanges emits one item per ad event with context', () => {
 			['new', 'meta:a'],
 			['stopped', 'meta:b'],
 			['changed', 'meta:c'],
+			['removed', 'meta:d'],
 		],
 	);
 	assert.equal(items[0].advertiser_id, 'meta:1');

@@ -2,17 +2,21 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-An [n8n](https://n8n.io/) community node for the AdLib API: one API for the public ad libraries of **Meta (Facebook, Instagram), Google, TikTok, LinkedIn, Pinterest and X**, with its own ad history. Ads that disappear from a platform's library are still there, with their run time.
+An [n8n](https://n8n.io/) community node for the AdLib API: one API for the public ad libraries of **Meta (Facebook, Instagram), Google (incl. YouTube and Google Play), TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon and Microsoft** (Microsoft in beta), with its own ad history. Ads that disappear from a platform's library are still there, with their run time, marked with `removed_from_library_at`.
+
+Get an API key at [adlibapi.com](https://adlibapi.com); the free plan includes 5,000 credits a month.
 
 With this package you can:
 
-- find a brand's advertiser IDs on all six platforms from its domain,
-- search ads by keyword, advertiser or domain,
+- find a brand's advertiser IDs on every platform from its domain,
+- search ads by keyword, advertiser or domain, including ads the platforms have removed,
+- break an ad's creative down into its features (hook, offers, urgency, format, video length, cuts, on-image text),
+- turn a link copied from an ad library into an AdLib ID,
 - check whether a company is advertising right now (lead enrichment),
 - read an advertiser's ads, stats, timeline and changes,
-- watch competitors and start a workflow when they launch, stop or change ads (**AdLib Trigger**).
+- watch competitors and start a workflow when they launch, stop, change or remove ads (**AdLib Trigger**), or get the changes by email.
 
-Not affiliated with Meta, Google, TikTok, LinkedIn, Pinterest or X.
+Not affiliated with Meta, Google, TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon or Microsoft.
 
 - [Installation](#installation)
 - [Credentials](#credentials)
@@ -57,6 +61,8 @@ When you save the credential, n8n tests it with `GET /v1/usage?days=1`.
 | Ad | Search (Return All) | `GET /v1/search` |
 | Ad | Get | `GET /v1/ads/{id}` |
 | Ad | Get History | `GET /v1/ads/{id}/history` |
+| Ad | Get Ad Features | `GET /v1/ads/{id}/features` |
+| Ad | Parse Library URL | `GET /v1/library-url?url=` |
 | Domain | Check if Advertising | `GET /v1/domains/{domain}/check` |
 | Domain | Get Company Profile | `GET /v1/companies/{domain}` |
 | Watchlist | Create | `POST /v1/watchlists` |
@@ -64,6 +70,7 @@ When you save the credential, n8n tests it with `GET /v1/usage?days=1`.
 | Watchlist | List | `GET /v1/watchlists` |
 | Watchlist | Add Advertisers | `POST /v1/watchlists/{id}/advertisers` |
 | Watchlist | Remove Advertiser | `DELETE /v1/watchlists/{id}/advertisers/{advertiser_id}` |
+| Watchlist | Update | `PATCH /v1/watchlists/{id}` |
 | Watchlist | Delete | `DELETE /v1/watchlists/{id}` |
 | Batch | Create | `POST /v1/batch` |
 | Batch | Get (Return All) | `GET /v1/batch/{job_id}` |
@@ -73,18 +80,25 @@ Notes:
 
 - IDs have the form `<platform>:<id>`, for example `meta:15087023444` (advertiser) or `meta:1234567890` (ad). **Advertiser > Resolve by Domain** gives you advertiser IDs; each candidate has a confidence `score` (0 to 1) and a `match_reason`. Use **Options > Minimum Score** to drop weak matches and **Split Into Items** to get one item per advertiser.
 - Domains can be entered as `nike.com` or as a full URL; only the host is sent.
-- **Ad > Search** needs exactly one of keyword, advertiser (name or ID) or domain. Without **Platforms**, all platforms that support the search are queried in parallel; platforms that fail are listed in `meta.errors` with **Raw Pages** and are not billed. **Source: History** searches the archive, including ads that are gone from the platforms; **Sort: Days Running** puts the longest-running ads (likely winners) first. **Political Ads: Only** or **Exclude** filters political and issue ads (only Meta labels them, so **Only** limits results to Meta).
+- **Ad > Search** needs exactly one of keyword, advertiser (name or ID) or domain. Without **Platforms**, all platforms that support the search are queried in parallel; platforms that fail are listed in `meta.errors` with **Raw Pages** and are not billed. **Source: History** searches the archive, including ads that are gone from the platforms; **Sort: Days Running** puts the longest-running ads (likely winners) first. **Political Ads: Only** or **Exclude** filters political and issue ads (only Meta labels them, so **Only** limits results to Meta). With **Source: History**, **Removed Ads: Only** returns ads the platforms' libraries no longer show (taken down, deleted or aged out) that AdLib kept, and **Exclude** leaves them out.
+- Platforms: Amazon, Apple, Google, LinkedIn, Meta, Microsoft (beta), Pinterest, Snapchat, TikTok and X. In **Ad > Search** you can also pick **YouTube** and **Google Play** (Google ads with that placement), and **Options > Placement** (Google Search, Shopping, Maps, Play or YouTube) limits a search to where Google ads ran. YouTube with **Format: Video** gives YouTube video ads.
+- Every ad has `derived.signals` (why it likely performs, from public facts: `long_running`, `still_running_90d`, `scaled`, `wide_reach`, `multi_country`) and `derived.stage` (`testing`, `scaling` or `proven`). List results carry `meta.platform_totals` with **Raw Pages**: the matching ads per platform, where the platform reports it.
+- **Ad > Get Ad Features** breaks a creative down: `text.hook`, offers, `urgency`, `social_proof`, `guarantee` and other tags (each with the exact text it matched), the measured `format`, media aspect, duration and scene cuts, and on-image text read with OCR. Rule-based and measured, no AI model. Costs 2 credits by default, plus the ad if it has to be fetched live.
+- **Ad > Parse Library URL** takes a link copied from the Meta Ad Library, Google Ads Transparency Center, TikTok Ad Library, LinkedIn Ad Library, Pinterest Ads Repository or an X post, and returns `kind` (ad or advertiser), `id` and `href`, the AdLib call that fetches it. Free.
+- **Domain > Check if Advertising** also returns `columns`, a flat object (`advertising`, `platforms_advertising`, `total_active_ads`, `latest_ad_at`, and `<platform>_advertising`, `<platform>_active_ads`, `<platform>_advertiser_id`) that maps straight onto spreadsheet columns.
 - **Domain > Get Company Profile** returns all ad accounts of a domain across platforms (`accounts`, with score at least **Minimum Score**, default 0.75), per-platform totals and combined `stats`. Agencies, resellers and partners running ads for the domain are listed under `related` (each account has a `role`) and left out of the totals unless **Include Related Accounts** is on. Accounts below the threshold are listed as `candidates`. It costs one resolve plus one stats call.
-- **Watchlist > List** returns each watchlist with `advertiser_count` and `interval_hours`; the advertisers and their crawl status are in **Watchlist > Get**.
+- **Watchlist > List** returns each watchlist with `advertiser_count`, `interval_hours` and `email_alerts`; the advertisers and their crawl status are in **Watchlist > Get**. **Options > Email Alerts** on **Create** (or **Update**) mails a digest of each crawl's changes to your account's email. **Watchlist > Update** changes the name, webhook URL (an empty **Webhook URL** field removes the webhook) or email alerts.
+- **Advertiser > Get Changes** can also return `removed` events: the platform's library no longer shows the ad (AdLib keeps it).
 - **Batch > Create** takes a list of advertiser IDs, domains or ad IDs; how many per job depends on your plan (the API documents up to 100, the node accepts at most 1,000). Poll it with **Batch > Get**, or pass a **Webhook URL** to be called when it is done. Results are kept 30 days.
 
 ## AdLib Trigger
 
-The trigger starts the workflow when watched advertisers start, stop or change ads.
+The trigger starts the workflow when watched advertisers start, stop, change or remove ads.
 
 - **Watch By: Advertiser IDs**: comma-separated advertiser IDs.
 - **Watch By: Domain**: the trigger resolves the domain first and watches the advertisers with at least **Minimum Score** (default 0.5), at most **Max per Platform** (default 1) per platform.
 - **Crawl Interval (Hours)**: 1 to 168, default 24.
+- **Options > Email Alerts**: also mail a digest of each crawl's changes to your account's email.
 
 On activation it creates an AdLib watchlist whose `webhook_url` is this node's webhook URL, and stores its ID. On deactivation it deletes the watchlist. Every delivery is checked against the `X-AdLib-Signature` header (`t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">`) with your webhook secret from `GET /v1/webhooks/secret`; deliveries with a wrong signature or a timestamp more than 5 minutes off are answered with `401` and do not start the workflow. If you rotate the secret, the trigger fetches the new one on the next delivery.
 
@@ -96,15 +110,16 @@ Each `advertiser.changes` event is one item:
   "watchlist_id": "…",
   "advertiser_id": "meta:15087023444",
   "crawled_at": "2026-10-26T06:00:00Z",
-  "summary": { "new": 2, "started": 0, "stopped": 1, "changed": 0 },
+  "summary": { "new": 2, "started": 0, "stopped": 1, "changed": 0, "removed": 0 },
   "new": [{ "type": "discovered", "at": "…", "ad_id": "meta:…", "ad": { } }],
   "started": [],
   "stopped": [{ "type": "stopped", "at": "…", "ad_id": "meta:…", "ad": { } }],
-  "changed": []
+  "changed": [],
+  "removed": []
 }
 ```
 
-With **Options > Split Into Ads**, you get one item per ad instead, with `change` set to `new`, `started`, `stopped` or `changed`, plus `watchlist_id`, `advertiser_id` and `crawled_at`.
+With **Options > Split Into Ads**, you get one item per ad instead, with `change` set to `new`, `started`, `stopped`, `changed` or `removed`, plus `watchlist_id`, `advertiser_id` and `crawled_at`.
 
 Good to know:
 
@@ -127,10 +142,11 @@ List operations output **one item per result** (ad, event, watchlist). They have
 
 ## Credits
 
-The AdLib API bills credits per **delivered result**, not per call, and reports them in the `X-Billing-Credits` header:
+The AdLib API bills credits per **delivered result**, not per call, and reports them in the `X-Billing-Credits` header. The free plan includes 5,000 credits a month.
 
 - 1 credit per ad on Meta, TikTok, Pinterest and X, 2 on Google, 3 on LinkedIn; double for archived ads last shown more than a year ago.
 - **Domain > Check if Advertising** is one flat price per check, free if no platform could be checked.
+- **Ad > Get Ad Features** costs 2 credits by default; **Ad > Parse Library URL** is free.
 - Empty results, cached results and upstream errors are free. Batch jobs cost the same per result as the synchronous endpoints.
 
 **Return All** can deliver many results, so keep **Max Pages** at a sensible value. **Usage > Get** shows what you used per day and endpoint.

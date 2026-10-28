@@ -84,6 +84,95 @@ test('Ad > Search sends the political filter', async () => {
 	assert.deepEqual(ctx.requests[0].qs, { q: 'election', political: 'true', limit: 10 });
 });
 
+test('Ad > Search sends new platforms, placement and the removed filter', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'ad',
+			operation: 'search',
+			searchBy: 'domain',
+			searchTerm: 'nike.com',
+			platforms: ['youtube', 'snapchat', 'microsoft'],
+			returnAll: false,
+			limit: 10,
+			options: { placement: 'youtube', removed: 'true', source: 'history', format: '' },
+		},
+		() => ({ statusCode: 200, body: { data: [], next_cursor: null, meta: {} } }),
+	);
+	await new AdLib().execute.call(ctx);
+	assert.deepEqual(ctx.requests[0].qs, {
+		domain: 'nike.com',
+		platform: 'youtube,snapchat,microsoft',
+		placement: 'youtube',
+		removed: 'true',
+		source: 'history',
+		limit: 10,
+	});
+});
+
+test('Ad > Get Ad Features returns the features with meta', async () => {
+	const ctx = fakeContext(
+		{ resource: 'ad', operation: 'getFeatures', adId: 'meta:1187430977361020' },
+		() => ({
+			statusCode: 200,
+			body: {
+				data: { version: '1', method: 'rules', format: 'vertical_video', text: { hook: 'New?' } },
+				meta: { ad_id: 'meta:1187430977361020', cached: false },
+			},
+		}),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(ctx.requests[0].method, 'GET');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/ads/meta:1187430977361020/features');
+	assert.equal(out[0].json.format, 'vertical_video');
+	assert.equal(out[0].json._meta.ad_id, 'meta:1187430977361020');
+});
+
+test('Ad > Parse Library URL sends the link', async () => {
+	const link = 'https://www.facebook.com/ads/library/?id=1187430977361020';
+	const ctx = fakeContext(
+		{ resource: 'ad', operation: 'parseLibraryUrl', libraryUrl: ` ${link} ` },
+		() => ({
+			statusCode: 200,
+			body: {
+				data: {
+					kind: 'ad',
+					platform: 'meta',
+					id: 'meta:1187430977361020',
+					href: '/v1/ads/meta:1187430977361020',
+				},
+			},
+		}),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/library-url');
+	assert.deepEqual(ctx.requests[0].qs, { url: link });
+	assert.equal(out[0].json.id, 'meta:1187430977361020');
+});
+
+test('Watchlist > Update sends a PATCH with the changed fields', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'watchlist',
+			operation: 'update',
+			watchlistId: 'w1',
+			updateFields: { name: ' Rivals ', webhookUrl: '', emailAlerts: true },
+		},
+		() => ({ statusCode: 200, body: { data: { id: 'w1', email_alerts: true } } }),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(out[0].json.email_alerts, true);
+	assert.equal(ctx.requests[0].method, 'PATCH');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/watchlists/w1');
+	assert.deepEqual(ctx.requests[0].body, { name: 'Rivals', webhook_url: '', email_alerts: true });
+
+	const empty = fakeContext(
+		{ resource: 'watchlist', operation: 'update', watchlistId: 'w1', updateFields: {} },
+		() => ({ statusCode: 200, body: {} }),
+	);
+	await assert.rejects(new AdLib().execute.call(empty), /at least one field/);
+	assert.equal(empty.requests.length, 0);
+});
+
 test('Domain > Get Company Profile sends the domain and options', async () => {
 	const ctx = fakeContext(
 		{
@@ -132,7 +221,7 @@ test('Watchlist > Create sends advertisers and options', async () => {
 			resource: 'watchlist',
 			operation: 'create',
 			advertiserIds: 'meta:1, google:AR2',
-			options: { name: 'Rivals', intervalHours: 12 },
+			options: { name: 'Rivals', intervalHours: 12, emailAlerts: true },
 		},
 		() => ({ statusCode: 201, body: { data: { id: 'w1', name: 'Rivals' } } }),
 	);
@@ -143,6 +232,7 @@ test('Watchlist > Create sends advertisers and options', async () => {
 		advertisers: ['meta:1', 'google:AR2'],
 		name: 'Rivals',
 		interval_hours: 12,
+		email_alerts: true,
 	});
 });
 

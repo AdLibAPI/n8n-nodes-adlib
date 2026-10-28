@@ -72,7 +72,7 @@ export class AdLibTrigger implements INodeType {
 		subtitle:
 			'={{"Watch " + ($parameter["watchBy"] === "domain" ? $parameter["domain"] : $parameter["advertiserIds"])}}',
 		description:
-			'Starts the workflow when watched advertisers start, stop or change ads (AdLib watchlist webhook)',
+			'Starts the workflow when watched advertisers start, stop, change or remove ads (AdLib watchlist webhook)',
 		defaults: {
 			name: 'AdLib Trigger',
 		},
@@ -184,12 +184,20 @@ export class AdLibTrigger implements INodeType {
 						description: 'Whether AdLib keeps full video files for these advertisers',
 					},
 					{
+						displayName: 'Email Alerts',
+						name: 'emailAlerts',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether AdLib also mails a digest of each crawl's changes to your account's email",
+					},
+					{
 						displayName: 'Split Into Ads',
 						name: 'splitIntoAds',
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to output one item per new, started, stopped or changed ad instead of one item per event',
+							'Whether to output one item per new, started, stopped, changed or removed ad instead of one item per event',
 					},
 					{
 						displayName: 'Watchlist Name',
@@ -259,6 +267,7 @@ export class AdLibTrigger implements INodeType {
 					interval_hours: this.getNodeParameter('intervalHours', 24) as number,
 				};
 				if (options.archiveVideos !== undefined) body.archive_videos = options.archiveVideos;
+				if (options.emailAlerts !== undefined) body.email_alerts = options.emailAlerts;
 
 				const created = await adLibApiRequest.call(this, 'POST', '/v1/watchlists', { body });
 				const id = (created.data as IDataObject)?.id;

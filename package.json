@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-adlib",
-	"version": "0.1.0",
-	"description": "n8n community node for the AdLib API: search the public ad libraries of Meta, Google, TikTok, LinkedIn, Pinterest and X, resolve advertisers from a domain, check if a company is advertising, and get webhook alerts when competitors start, stop or change ads.",
+	"version": "0.2.0",
+	"description": "n8n community node for the AdLib API: search the public ad libraries of Meta, Google (incl. YouTube), TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon and Microsoft, resolve advertisers from a domain, check if a company is advertising, break down ad creatives, and get webhook alerts when competitors start, stop, change or remove ads.",
 	"license": "MIT",
 	"homepage": "https://github.com/AdLibAPI/n8n-nodes-adlib",
 	"keywords": [
@@ -11,6 +11,9 @@
 		"google ads transparency",
 		"tiktok ads",
 		"linkedin ads",
+		"youtube ads",
+		"snapchat ads",
+		"amazon ads",
 		"competitor ads",
 		"ad monitoring",
 		"adlib",

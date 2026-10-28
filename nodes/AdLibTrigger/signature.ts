@@ -60,7 +60,7 @@ export function verifySignature(
 	return { valid: false, reason: 'signature mismatch' };
 }
 
-export const CHANGE_KINDS = ['new', 'started', 'stopped', 'changed'] as const;
+export const CHANGE_KINDS = ['new', 'started', 'stopped', 'changed', 'removed'] as const;
 
 /**
  * Split an advertiser.changes event into one object per ad event, each with

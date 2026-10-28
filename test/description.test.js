@@ -5,7 +5,12 @@ const assert = require('node:assert/strict');
 const { AdLib } = require('../dist/nodes/AdLib/AdLib.node');
 const { AdLibTrigger } = require('../dist/nodes/AdLibTrigger/AdLibTrigger.node');
 const { AdLibApi } = require('../dist/credentials/AdLibApi.credentials');
-const { OPERATIONS, RESOURCES } = require('../dist/nodes/AdLib/descriptions');
+const {
+	OPERATIONS,
+	RESOURCES,
+	PLATFORM_OPTIONS,
+	SEARCH_PLATFORM_OPTIONS,
+} = require('../dist/nodes/AdLib/descriptions');
 
 const node = new AdLib();
 const props = node.description.properties;
@@ -34,9 +39,9 @@ test('credential sends X-API-Key and tests GET /v1/usage', () => {
 test('all requested operations exist', () => {
 	const expected = {
 		advertiser: ['resolve', 'get', 'getAds', 'getChanges', 'getStats', 'getTimeline'],
-		ad: ['search', 'get', 'getHistory'],
+		ad: ['search', 'get', 'getFeatures', 'getHistory', 'parseLibraryUrl'],
 		domain: ['check', 'getCompany'],
-		watchlist: ['create', 'get', 'list', 'addAdvertisers', 'removeAdvertiser', 'delete'],
+		watchlist: ['create', 'get', 'list', 'addAdvertisers', 'removeAdvertiser', 'update', 'delete'],
 		batch: ['create', 'get'],
 		usage: ['get'],
 	};
@@ -63,6 +68,36 @@ test('option lists are sorted by name', () => {
 			[...names].sort((a, b) => a.localeCompare(b)),
 		);
 	}
+});
+
+test('platform options list every platform, search adds the YouTube and Play aliases', () => {
+	assert.deepEqual(PLATFORM_OPTIONS.map((o) => o.value).sort(), [
+		'amazon',
+		'apple',
+		'google',
+		'linkedin',
+		'meta',
+		'microsoft',
+		'pinterest',
+		'snapchat',
+		'tiktok',
+		'x',
+	]);
+	assert.deepEqual(
+		SEARCH_PLATFORM_OPTIONS.map((o) => o.value).sort(),
+		[...PLATFORM_OPTIONS.map((o) => o.value), 'play', 'youtube'].sort(),
+	);
+	for (const list of [PLATFORM_OPTIONS, SEARCH_PLATFORM_OPTIONS]) {
+		const names = list.map((o) => o.name);
+		assert.deepEqual(
+			names,
+			[...names].sort((a, b) => a.localeCompare(b)),
+		);
+	}
+	const search = props.find(
+		(p) => p.name === 'platforms' && p.displayOptions.show.resource.includes('ad'),
+	);
+	assert.equal(search.options, SEARCH_PLATFORM_OPTIONS);
 });
 
 test('paginated operations have Return All, Limit and Max Pages', () => {

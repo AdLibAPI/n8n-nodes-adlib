@@ -165,7 +165,9 @@ async function runOperation(
 					from: options.from,
 					to: options.to,
 					format: options.format,
+					placement: options.placement,
 					political: options.political,
+					removed: options.removed,
 					source: options.source,
 					sort: options.sort,
 				},
@@ -173,7 +175,16 @@ async function runOperation(
 			);
 			return flatten(pages, raw);
 		}
+		if (operation === 'parseLibraryUrl') {
+			const url = String(ctx.getNodeParameter('libraryUrl', i) ?? '').trim();
+			if (!url)
+				throw new NodeOperationError(ctx.getNode(), 'Library URL is empty', { itemIndex: i });
+			return unwrap(await adLibApiRequest.call(ctx, 'GET', '/v1/library-url', { qs: { url } }));
+		}
 		const id = encodeSegment(ctx.getNodeParameter('adId', i));
+		if (operation === 'getFeatures') {
+			return unwrap(await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}/features`));
+		}
 		if (operation === 'get') {
 			return unwrap(
 				await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}`, {
@@ -222,6 +233,7 @@ async function runOperation(
 					body.name = options.name.trim();
 				if (options.intervalHours !== undefined) body.interval_hours = options.intervalHours;
 				if (options.archiveVideos !== undefined) body.archive_videos = options.archiveVideos;
+				if (options.emailAlerts !== undefined) body.email_alerts = options.emailAlerts;
 				if (typeof options.webhookUrl === 'string' && options.webhookUrl.trim()) {
 					body.webhook_url = options.webhookUrl.trim();
 				}
@@ -246,6 +258,20 @@ async function runOperation(
 					`/v1/watchlists/${id}/advertisers/${encodeSegment(advertiserId)}`,
 				);
 				return { removed: true, watchlist_id: decodeURIComponent(id), advertiser_id: advertiserId };
+			}
+			case 'update': {
+				const fields = (ctx.getNodeParameter('updateFields', i, {}) ?? {}) as IDataObject;
+				const body: IDataObject = {};
+				if (typeof fields.name === 'string' && fields.name.trim()) body.name = fields.name.trim();
+				// An empty Webhook URL removes the webhook.
+				if (typeof fields.webhookUrl === 'string') body.webhook_url = fields.webhookUrl.trim();
+				if (typeof fields.emailAlerts === 'boolean') body.email_alerts = fields.emailAlerts;
+				if (!Object.keys(body).length) {
+					throw new NodeOperationError(ctx.getNode(), 'Add at least one field to update', {
+						itemIndex: i,
+					});
+				}
+				return unwrap(await adLibApiRequest.call(ctx, 'PATCH', `/v1/watchlists/${id}`, { body }));
 			}
 			case 'delete':
 				await adLibApiRequest.call(ctx, 'DELETE', `/v1/watchlists/${id}`);
@@ -321,7 +347,7 @@ export class AdLib implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description:
-			'Search the ad libraries of Meta, Google, TikTok, LinkedIn, Pinterest and X, resolve advertisers and watch competitors via the AdLib API',
+			'Search the ad libraries of Meta, Google, TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon and Microsoft, resolve advertisers and watch competitors via the AdLib API',
 		defaults: {
 			name: 'AdLib',
 		},
