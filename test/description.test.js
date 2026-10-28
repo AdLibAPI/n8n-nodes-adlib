@@ -38,12 +38,23 @@ test('credential sends X-API-Key and tests GET /v1/usage', () => {
 
 test('all requested operations exist', () => {
 	const expected = {
-		advertiser: ['resolve', 'get', 'getAds', 'getChanges', 'getStats', 'getTimeline'],
+		advertiser: [
+			'resolve',
+			'get',
+			'getAds',
+			'getChanges',
+			'getStats',
+			'getTimeline',
+			'listReports',
+			'reportMatch',
+		],
 		ad: ['search', 'get', 'getFeatures', 'getHistory', 'parseLibraryUrl'],
-		domain: ['check', 'getCompany'],
+		domain: ['check', 'getCompany', 'suggest'],
 		watchlist: ['create', 'get', 'list', 'addAdvertisers', 'removeAdvertiser', 'update', 'delete'],
 		batch: ['create', 'get'],
+		platform: ['list', 'getStatus'],
 		usage: ['get'],
+		webhook: ['listDeliveries', 'getDelivery', 'redeliver', 'test', 'getSecret', 'rotateSecret'],
 	};
 	assert.deepEqual(RESOURCES.map((r) => r.value).sort(), Object.keys(expected).sort());
 	for (const [resource, ops] of Object.entries(expected)) {

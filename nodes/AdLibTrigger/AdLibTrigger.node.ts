@@ -167,7 +167,8 @@ export class AdLibTrigger implements INodeType {
 				type: 'number',
 				default: 24,
 				typeOptions: { minValue: 1, maxValue: 168 },
-				description: 'How often AdLib crawls the advertisers',
+				description:
+					'How often AdLib crawls the advertisers. Shortest per plan: Free and Starter 24, Growth 12, Pro 6, Business 1.',
 			},
 			{
 				displayName: 'Options',

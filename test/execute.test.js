@@ -399,3 +399,198 @@ test('trigger activation resolves a domain, creates the watchlist and deletes it
 	assert.equal(ctx.requests.at(-1).url, 'https://adlib.test/v1/watchlists/w9');
 	assert.deepEqual(staticData, {});
 });
+
+test('Advertiser > Report Resolve Match posts the report', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'advertiser',
+			operation: 'reportMatch',
+			domain: 'https://www.Audi.de/',
+			reportKind: 'wrong_role',
+			reportAdvertiserId: ' google:AR017 ',
+			reportRole: 'agency',
+			reportNote: ' agency account, not the brand ',
+		},
+		() => ({ statusCode: 201, body: { data: { id: 'r1', status: 'open' } } }),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(out[0].json.id, 'r1');
+	assert.equal(ctx.requests[0].method, 'POST');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/advertisers/resolve/reports');
+	assert.deepEqual(ctx.requests[0].body, {
+		kind: 'wrong_role',
+		domain: 'www.audi.de',
+		advertiser_id: 'google:AR017',
+		role: 'agency',
+		note: 'agency account, not the brand',
+	});
+
+	const missing = fakeContext(
+		{
+			resource: 'advertiser',
+			operation: 'reportMatch',
+			domain: 'audi.de',
+			reportKind: 'missing_match',
+		},
+		() => ({ statusCode: 201, body: { data: { id: 'r2' } } }),
+	);
+	await new AdLib().execute.call(missing);
+	assert.deepEqual(missing.requests[0].body, { kind: 'missing_match', domain: 'audi.de' });
+
+	const noId = fakeContext(
+		{
+			resource: 'advertiser',
+			operation: 'reportMatch',
+			domain: 'audi.de',
+			reportKind: 'wrong_match',
+		},
+		() => ({ statusCode: 201, body: {} }),
+	);
+	await assert.rejects(new AdLib().execute.call(noId), /Advertiser ID is required/);
+	assert.equal(noId.requests.length, 0);
+});
+
+test('Advertiser > List Resolve Reports outputs one item per report', async () => {
+	const ctx = fakeContext({ resource: 'advertiser', operation: 'listReports' }, () => ({
+		statusCode: 200,
+		body: { data: [{ id: 'r1' }, { id: 'r2' }] },
+	}));
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.deepEqual(
+		out.map((i) => i.json.id),
+		['r1', 'r2'],
+	);
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/advertisers/resolve/reports');
+});
+
+test('Domain > Suggest Domains sends q and limit', async () => {
+	const ctx = fakeContext(
+		{ resource: 'domain', operation: 'suggest', query: ' nik ', maxResults: 5 },
+		() => ({ statusCode: 200, body: { data: [{ domain: 'nike.com' }] } }),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(out[0].json.domain, 'nike.com');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/domains/suggest');
+	assert.deepEqual(ctx.requests[0].qs, { q: 'nik', limit: 5 });
+});
+
+test('Platform > List and Get Status', async () => {
+	const list = fakeContext({ resource: 'platform', operation: 'list' }, () => ({
+		statusCode: 200,
+		body: { data: [{ platform: 'meta' }, { platform: 'google' }] },
+	}));
+	const [listOut] = await new AdLib().execute.call(list);
+	assert.equal(listOut.length, 2);
+	assert.equal(list.requests[0].url, 'https://adlib.test/v1/platforms');
+
+	const status = fakeContext({ resource: 'platform', operation: 'getStatus' }, () => ({
+		statusCode: 200,
+		body: { status: 'operational', version: '1', platforms: [] },
+	}));
+	const [statusOut] = await new AdLib().execute.call(status);
+	assert.equal(statusOut[0].json.status, 'operational');
+	assert.equal(status.requests[0].url, 'https://adlib.test/v1/status');
+});
+
+test('Webhook > List Deliveries filters by status and paginates', async () => {
+	const pages = [
+		{ data: [{ id: 1 }], next_cursor: 'c1' },
+		{ data: [{ id: 2 }], next_cursor: null },
+	];
+	const ctx = fakeContext(
+		{
+			resource: 'webhook',
+			operation: 'listDeliveries',
+			returnAll: true,
+			pageSize: 100,
+			maxPages: 5,
+			options: { status: 'failed' },
+		},
+		(_opts, n) => ({ statusCode: 200, body: pages[n - 1] }),
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.deepEqual(
+		out.map((i) => i.json.id),
+		[1, 2],
+	);
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/webhooks/deliveries');
+	assert.deepEqual(ctx.requests[0].qs, { status: 'failed', limit: 100 });
+	assert.equal(ctx.requests[1].qs.cursor, 'c1');
+});
+
+test('Webhook > Get Delivery, Redeliver and Send Test', async () => {
+	const get = fakeContext(
+		{ resource: 'webhook', operation: 'getDelivery', deliveryId: ' 42 ' },
+		() => ({ statusCode: 200, body: { data: { id: 42, status: 'failed', payload: {} } } }),
+	);
+	const [getOut] = await new AdLib().execute.call(get);
+	assert.equal(getOut[0].json.id, 42);
+	assert.equal(get.requests[0].url, 'https://adlib.test/v1/webhooks/deliveries/42');
+
+	const redeliver = fakeContext(
+		{ resource: 'webhook', operation: 'redeliver', deliveryId: '42' },
+		() => ({ statusCode: 202, body: { delivery_id: 43, status: 'pending' } }),
+	);
+	const [redOut] = await new AdLib().execute.call(redeliver);
+	assert.equal(redOut[0].json.delivery_id, 43);
+	assert.equal(redeliver.requests[0].method, 'POST');
+	assert.equal(redeliver.requests[0].url, 'https://adlib.test/v1/webhooks/deliveries/42/redeliver');
+
+	const bad = fakeContext(
+		{ resource: 'webhook', operation: 'redeliver', deliveryId: 'abc' },
+		() => ({ statusCode: 202, body: {} }),
+	);
+	await assert.rejects(new AdLib().execute.call(bad), /Delivery ID must be a number/);
+	assert.equal(bad.requests.length, 0);
+
+	const ping = fakeContext(
+		{ resource: 'webhook', operation: 'test', url: ' https://hooks.slack.com/services/x ' },
+		() => ({ statusCode: 202, body: { delivery_id: 7, status: 'pending' } }),
+	);
+	await new AdLib().execute.call(ping);
+	assert.equal(ping.requests[0].url, 'https://adlib.test/v1/webhooks/test');
+	assert.deepEqual(ping.requests[0].body, { url: 'https://hooks.slack.com/services/x' });
+});
+
+test('Webhook > Rotate Secret posts to the rotate endpoint', async () => {
+	const ctx = fakeContext({ resource: 'webhook', operation: 'rotateSecret' }, () => ({
+		statusCode: 200,
+		body: { data: { secret: 'whsec_test' } },
+	}));
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(ctx.requests[0].method, 'POST');
+	assert.equal(ctx.requests[0].url, 'https://adlib.test/v1/webhooks/secret/rotate');
+	assert.equal(typeof out[0].json.secret, 'string');
+});
+
+test('Batch > Create sends min_score and rejects more than 100 items', async () => {
+	const ctx = fakeContext(
+		{
+			resource: 'batch',
+			operation: 'create',
+			itemType: 'domains',
+			items: 'nike.com\nhttps://adidas.com/',
+			options: { minScore: 0.8 },
+		},
+		() => ({ statusCode: 202, body: { data: { id: 'j1', status: 'queued' } } }),
+	);
+	await new AdLib().execute.call(ctx);
+	assert.deepEqual(ctx.requests[0].body, {
+		type: 'domains',
+		items: ['nike.com', 'adidas.com'],
+		options: { min_score: 0.8 },
+	});
+
+	const many = fakeContext(
+		{
+			resource: 'batch',
+			operation: 'create',
+			itemType: 'ads',
+			items: Array.from({ length: 101 }, (_, n) => `meta:${n}`).join(','),
+			options: {},
+		},
+		() => ({ statusCode: 202, body: {} }),
+	);
+	await assert.rejects(new AdLib().execute.call(many), /at most 100 per batch/);
+	assert.equal(many.requests.length, 0);
+});

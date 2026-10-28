@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-28
+
+- **Advertiser > Report Resolve Match** (`POST /v1/advertisers/resolve/reports`): report a wrong match, a missing match or a wrong role (Report Kind, Domain, Advertiser ID, Role, Note). **Advertiser > List Resolve Reports** (`GET /v1/advertisers/resolve/reports`). Both free.
+- **Domain > Suggest Domains** (`GET /v1/domains/suggest`): domain autocomplete from AdLib's index (Text, Max Results 1 to 20). Free.
+- New **Webhook** resource: **List Deliveries** (`GET /v1/webhooks/deliveries`, Status filter, Return All), **Get Delivery**, **Redeliver**, **Send Test** (`POST /v1/webhooks/test`), **Get Secret** and **Rotate Secret**.
+- New **Platform** resource: **List** (`GET /v1/platforms`) and **Get Status** (`GET /v1/status`).
+- **Batch > Create**: **Minimum Score** option (`options.min_score`, domains). The node now rejects more than 100 items per batch (the API's maximum; plan sizes Free 5, Starter 25, Growth and above 100) instead of 1,000.
+- **Crawl Interval (Hours)** on **Watchlist > Create** and the **AdLib Trigger** documents the plan minimums (Free and Starter 24, Growth 12, Pro 6, Business 1).
+- README: credits per platform (incl. Snapchat, Apple, Amazon, Microsoft, YouTube and Google Play), free endpoints, all 12 platforms, and why the node does not use CSV output.
+
 ## [0.2.0] - 2026-10-28
 
 - New platforms in every Platforms field: **Amazon**, **Apple**, **Microsoft (Beta)** and **Snapchat**. **Ad > Search** also offers **YouTube** and **Google Play** (Google ads with that placement).

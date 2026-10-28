@@ -46,8 +46,10 @@ export const RESOURCES: INodePropertyOptions[] = [
 	{ name: 'Advertiser', value: 'advertiser' },
 	{ name: 'Batch', value: 'batch' },
 	{ name: 'Domain', value: 'domain' },
+	{ name: 'Platform', value: 'platform' },
 	{ name: 'Usage', value: 'usage' },
 	{ name: 'Watchlist', value: 'watchlist' },
+	{ name: 'Webhook', value: 'webhook' },
 ];
 
 /** Operations per resource. `paginated` operations get Return All / Limit. */
@@ -89,6 +91,19 @@ export const OPERATIONS: Record<
 			action: 'Get the timeline of an advertiser',
 			description: 'When which ads started and stopped',
 			paginated: { maxLimit: 200, defaultLimit: 50 },
+		},
+		{
+			name: 'List Resolve Reports',
+			value: 'listReports',
+			action: 'List your resolve reports',
+			description: 'Your reports of wrong or missing matches and how they were resolved (free)',
+		},
+		{
+			name: 'Report Resolve Match',
+			value: 'reportMatch',
+			action: 'Report a wrong or missing resolve match',
+			description:
+				'Tell AdLib that Resolve by Domain returned a wrong account, missed one, or gave it the wrong role (free)',
 		},
 		{
 			name: 'Resolve by Domain',
@@ -144,6 +159,27 @@ export const OPERATIONS: Record<
 			action: 'Get the company profile of a domain',
 			description: 'All ad accounts of a domain across platforms, with combined stats',
 		},
+		{
+			name: 'Suggest Domains',
+			value: 'suggest',
+			action: 'Suggest domains',
+			description:
+				'Domains and advertiser names AdLib already knows that start with the text, most archived ads first (free)',
+		},
+	],
+	platform: [
+		{
+			name: 'Get Status',
+			value: 'getStatus',
+			action: 'Get the API status',
+			description: 'Health per platform: success rate, latency and last smoke test',
+		},
+		{
+			name: 'List',
+			value: 'list',
+			action: 'List platforms',
+			description: 'Supported platforms with their search modes and filters',
+		},
 	],
 	watchlist: [
 		{
@@ -193,6 +229,48 @@ export const OPERATIONS: Record<
 			paginated: { maxLimit: 100, defaultLimit: 20 },
 		},
 	],
+	webhook: [
+		{
+			name: 'Get Delivery',
+			value: 'getDelivery',
+			action: 'Get a webhook delivery',
+			description: 'One webhook delivery including its payload',
+		},
+		{
+			name: 'Get Secret',
+			value: 'getSecret',
+			action: 'Get the webhook signing secret',
+			description: 'The secret that signs X-AdLib-Signature. It ends up in the execution data.',
+		},
+		{
+			name: 'List Deliveries',
+			value: 'listDeliveries',
+			action: 'List webhook deliveries',
+			description:
+				"Your webhook deliveries, newest first, with status, attempts and the receiver's HTTP status (kept 30 days)",
+			paginated: { maxLimit: 100, defaultLimit: 25 },
+		},
+		{
+			name: 'Redeliver',
+			value: 'redeliver',
+			action: 'Redeliver a webhook delivery',
+			description: 'Queue a delivery again',
+		},
+		{
+			name: 'Rotate Secret',
+			value: 'rotateSecret',
+			action: 'Rotate the webhook signing secret',
+			description:
+				'Sign deliveries with a new secret from now on; the old one stops working immediately',
+		},
+		{
+			name: 'Send Test',
+			value: 'test',
+			action: 'Send a test webhook',
+			description:
+				'Send a signed webhook.ping event to a URL (Slack and Discord get a readable message)',
+		},
+	],
 	usage: [
 		{
 			name: 'Get',
@@ -210,7 +288,9 @@ export const DEFAULT_OPERATION: Record<string, string> = {
 	domain: 'check',
 	watchlist: 'list',
 	batch: 'create',
+	platform: 'list',
 	usage: 'get',
+	webhook: 'listDeliveries',
 };
 
 const show = (resource: string, operation: string[], extra: Record<string, unknown[]> = {}) => ({
@@ -300,7 +380,68 @@ const advertiserProperties: INodeProperties[] = [
 		default: '',
 		placeholder: 'nike.com',
 		description: 'Company domain. A full URL also works, only the host is used.',
-		displayOptions: show('advertiser', ['resolve']),
+		displayOptions: show('advertiser', ['resolve', 'reportMatch']),
+	},
+	{
+		displayName: 'Report Kind',
+		name: 'reportKind',
+		type: 'options',
+		options: [
+			{
+				name: 'Missing Match',
+				value: 'missing_match',
+				description: "The domain's account is missing from the result",
+			},
+			{
+				name: 'Wrong Match',
+				value: 'wrong_match',
+				description: 'An advertiser in the result does not belong to the domain',
+			},
+			{
+				name: 'Wrong Role',
+				value: 'wrong_role',
+				description:
+					'The account belongs to the domain but has the wrong role, e.g. an agency shown as the brand',
+			},
+		],
+		default: 'wrong_match',
+		displayOptions: show('advertiser', ['reportMatch']),
+	},
+	{
+		displayName: 'Advertiser ID',
+		name: 'reportAdvertiserId',
+		type: 'string',
+		default: '',
+		placeholder: 'google:AR01700036858500612097',
+		description:
+			'The advertiser ID (platform:ID) the report is about. Required for Wrong Match and Wrong Role, optional for Missing Match.',
+		displayOptions: show('advertiser', ['reportMatch']),
+	},
+	{
+		displayName: 'Role',
+		name: 'reportRole',
+		type: 'options',
+		options: [
+			{ name: 'Agency', value: 'agency' },
+			{ name: 'Brand', value: 'brand' },
+			{ name: 'Not Specified', value: '' },
+			{ name: 'Partner', value: 'partner' },
+			{ name: 'Reseller', value: 'reseller' },
+		],
+		default: '',
+		description: 'The role the account should have. Required for Wrong Role.',
+		displayOptions: show('advertiser', ['reportMatch'], {
+			reportKind: ['missing_match', 'wrong_role'],
+		}),
+	},
+	{
+		displayName: 'Note',
+		name: 'reportNote',
+		type: 'string',
+		default: '',
+		placeholder: 'Agency account, not the brand',
+		description: 'What is wrong (max 1,000 characters)',
+		displayOptions: show('advertiser', ['reportMatch']),
 	},
 	{
 		displayName: 'Options',
@@ -684,6 +825,25 @@ const domainProperties: INodeProperties[] = [
 		displayOptions: show('domain', ['check', 'getCompany']),
 	},
 	{
+		displayName: 'Text',
+		name: 'query',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'nik',
+		description: 'Start of a domain or advertiser name (2 to 100 characters)',
+		displayOptions: show('domain', ['suggest']),
+	},
+	{
+		displayName: 'Max Results',
+		name: 'maxResults',
+		type: 'number',
+		default: 8,
+		typeOptions: { minValue: 1, maxValue: 20 },
+		description: 'Max number of results to return',
+		displayOptions: show('domain', ['suggest']),
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -805,6 +965,8 @@ const watchlistProperties: INodeProperties[] = [
 				type: 'number',
 				default: 24,
 				typeOptions: { minValue: 1, maxValue: 168 },
+				description:
+					'How often AdLib crawls the advertisers. Shortest per plan: Free and Starter 24, Growth 12, Pro 6, Business 1.',
 			},
 			{
 				displayName: 'Email Alerts',
@@ -888,7 +1050,8 @@ const batchProperties: INodeProperties[] = [
 		required: true,
 		default: '',
 		placeholder: 'nike.com, adidas.com',
-		description: 'Comma- or newline-separated advertiser IDs, domains or ad IDs (max 1,000)',
+		description:
+			"Comma- or newline-separated advertiser IDs, domains or ad IDs. Up to your plan's batch size: Free 5, Starter 25, Growth and above 100.",
 		displayOptions: show('batch', ['create']),
 	},
 	{
@@ -922,6 +1085,15 @@ const batchProperties: INodeProperties[] = [
 				default: 3,
 				typeOptions: { minValue: 0, maxValue: 20 },
 				description: 'Pages of ads fetched per advertiser (advertisers only)',
+			},
+			{
+				displayName: 'Minimum Score',
+				name: 'minScore',
+				type: 'number',
+				default: 0,
+				typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
+				description:
+					'Keep only advertisers with at least this resolve score, 0 to 1 (domains only)',
 			},
 			{
 				displayName: 'Platforms',
@@ -984,6 +1156,55 @@ const usageProperties: INodeProperties[] = [
 	},
 ];
 
+const webhookProperties: INodeProperties[] = [
+	{
+		displayName: 'Delivery ID',
+		name: 'deliveryId',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: '12345',
+		description: 'Numeric ID of the delivery, from Webhook > List Deliveries',
+		displayOptions: show('webhook', ['getDelivery', 'redeliver']),
+	},
+	{
+		displayName: 'URL',
+		name: 'url',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'https://example.com/hooks/adlib',
+		description:
+			'Endpoint that receives the signed webhook.ping event. Slack and Discord webhook URLs get a readable, unsigned message.',
+		displayOptions: show('webhook', ['test']),
+	},
+	...paginationFields('webhook', 'listDeliveries'),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: show('webhook', ['listDeliveries']),
+		options: [
+			rawOption,
+			cursorOption,
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{ name: 'Any', value: '' },
+					{ name: 'Delivered', value: 'delivered' },
+					{ name: 'Failed', value: 'failed' },
+					{ name: 'Pending', value: 'pending' },
+				],
+				default: '',
+			},
+		],
+	},
+];
+
 export function buildProperties(): INodeProperties[] {
 	const properties: INodeProperties[] = [
 		{
@@ -1021,6 +1242,7 @@ export function buildProperties(): INodeProperties[] {
 		...watchlistProperties,
 		...batchProperties,
 		...usageProperties,
+		...webhookProperties,
 	);
 	return properties;
 }

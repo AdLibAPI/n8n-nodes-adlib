@@ -21,6 +21,20 @@ import {
 
 type Ctx = IExecuteFunctions;
 
+/** The API's largest batch size (Growth plan and above). */
+const MAX_BATCH_ITEMS = 100;
+
+/** Webhook delivery IDs are integers. */
+function deliveryIdOf(ctx: Ctx, i: number): string {
+	const id = String(ctx.getNodeParameter('deliveryId', i) ?? '').trim();
+	if (!/^\d+$/.test(id)) {
+		throw new NodeOperationError(ctx.getNode(), `Delivery ID must be a number (got "${id}")`, {
+			itemIndex: i,
+		});
+	}
+	return id;
+}
+
 /** Unwrap {data, meta}: single objects come back as `data`, with `meta` kept as `_meta`. */
 function unwrap(body: IDataObject): IDataObject {
 	const data = body.data;
@@ -100,6 +114,37 @@ async function runOperation(
 			);
 			if (options.split === true) return advertisers;
 			return { ...data, advertisers };
+		}
+		if (operation === 'listReports') {
+			return listOf(await adLibApiRequest.call(ctx, 'GET', '/v1/advertisers/resolve/reports'));
+		}
+		if (operation === 'reportMatch') {
+			const domain = cleanDomain(ctx.getNodeParameter('domain', i));
+			if (!domain) throw new NodeOperationError(ctx.getNode(), 'Domain is empty', { itemIndex: i });
+			const kind = ctx.getNodeParameter('reportKind', i) as string;
+			const advertiserId = String(ctx.getNodeParameter('reportAdvertiserId', i, '') ?? '').trim();
+			const role =
+				kind === 'wrong_match' ? '' : String(ctx.getNodeParameter('reportRole', i, '') ?? '');
+			const note = String(ctx.getNodeParameter('reportNote', i, '') ?? '').trim();
+			if (!advertiserId && kind !== 'missing_match') {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					'Advertiser ID is required for Wrong Match and Wrong Role',
+					{ itemIndex: i },
+				);
+			}
+			if (!role && kind === 'wrong_role') {
+				throw new NodeOperationError(ctx.getNode(), 'Role is required for Wrong Role', {
+					itemIndex: i,
+				});
+			}
+			const body: IDataObject = { kind, domain };
+			if (advertiserId) body.advertiser_id = advertiserId;
+			if (role) body.role = role;
+			if (note) body.note = note;
+			return unwrap(
+				await adLibApiRequest.call(ctx, 'POST', '/v1/advertisers/resolve/reports', { body }),
+			);
 		}
 		const id = encodeSegment(ctx.getNodeParameter('advertiserId', i));
 		const base = `/v1/advertisers/${id}`;
@@ -197,6 +242,19 @@ async function runOperation(
 		}
 	}
 
+	if (resource === 'domain' && operation === 'suggest') {
+		const q = String(ctx.getNodeParameter('query', i) ?? '').trim();
+		if (q.length < 2)
+			throw new NodeOperationError(ctx.getNode(), 'Text needs at least 2 characters', {
+				itemIndex: i,
+			});
+		return listOf(
+			await adLibApiRequest.call(ctx, 'GET', '/v1/domains/suggest', {
+				qs: { q, limit: ctx.getNodeParameter('maxResults', i, 8) as number },
+			}),
+		);
+	}
+
 	if (resource === 'domain') {
 		const domain = cleanDomain(ctx.getNodeParameter('domain', i));
 		if (!domain) throw new NodeOperationError(ctx.getNode(), 'Domain is empty', { itemIndex: i });
@@ -284,11 +342,15 @@ async function runOperation(
 			const items = splitList(ctx.getNodeParameter('items', i));
 			if (!items.length)
 				throw new NodeOperationError(ctx.getNode(), 'Items is empty', { itemIndex: i });
-			if (items.length > 1000) {
+			if (items.length > MAX_BATCH_ITEMS) {
 				throw new NodeOperationError(
 					ctx.getNode(),
-					`Items: at most 1,000 per batch (got ${items.length})`,
-					{ itemIndex: i, description: 'Split the list into smaller batches' },
+					`Items: at most ${MAX_BATCH_ITEMS} per batch (got ${items.length})`,
+					{
+						itemIndex: i,
+						description:
+							"Split the list into smaller batches. Your plan's batch size: Free 5, Starter 25, Growth and above 100.",
+					},
 				);
 			}
 			const type = ctx.getNodeParameter('itemType', i) as string;
@@ -298,6 +360,7 @@ async function runOperation(
 			}
 			if (options.includeAds !== undefined) batchOptions.include_ads = options.includeAds;
 			if (options.maxPages !== undefined) batchOptions.max_pages = options.maxPages;
+			if (options.minScore !== undefined) batchOptions.min_score = options.minScore;
 			const platforms = splitList(options.platforms);
 			if (platforms.length) batchOptions.platforms = platforms;
 			if (options.status) batchOptions.status = options.status;
@@ -320,6 +383,46 @@ async function runOperation(
 				items: pages.flatMap((p) => listOf(p, 'items')),
 				next_cursor: last.next_cursor ?? null,
 			};
+		}
+	}
+
+	if (resource === 'platform') {
+		if (operation === 'list')
+			return listOf(await adLibApiRequest.call(ctx, 'GET', '/v1/platforms'));
+		if (operation === 'getStatus') return await adLibApiRequest.call(ctx, 'GET', '/v1/status');
+	}
+
+	if (resource === 'webhook') {
+		switch (operation) {
+			case 'listDeliveries': {
+				const pages = await listPages(
+					ctx,
+					i,
+					'/v1/webhooks/deliveries',
+					{ status: options.status },
+					cursor,
+				);
+				return flatten(pages, raw);
+			}
+			case 'getDelivery':
+				return unwrap(
+					await adLibApiRequest.call(ctx, 'GET', `/v1/webhooks/deliveries/${deliveryIdOf(ctx, i)}`),
+				);
+			case 'redeliver':
+				return await adLibApiRequest.call(
+					ctx,
+					'POST',
+					`/v1/webhooks/deliveries/${deliveryIdOf(ctx, i)}/redeliver`,
+				);
+			case 'test': {
+				const url = String(ctx.getNodeParameter('url', i) ?? '').trim();
+				if (!url) throw new NodeOperationError(ctx.getNode(), 'URL is empty', { itemIndex: i });
+				return await adLibApiRequest.call(ctx, 'POST', '/v1/webhooks/test', { body: { url } });
+			}
+			case 'getSecret':
+				return unwrap(await adLibApiRequest.call(ctx, 'GET', '/v1/webhooks/secret'));
+			case 'rotateSecret':
+				return unwrap(await adLibApiRequest.call(ctx, 'POST', '/v1/webhooks/secret/rotate'));
 		}
 	}
 
@@ -347,7 +450,7 @@ export class AdLib implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description:
-			'Search the ad libraries of Meta, Google, TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon and Microsoft, resolve advertisers and watch competitors via the AdLib API',
+			'Search the ad libraries of Meta, Google (incl. YouTube and Google Play), TikTok, LinkedIn, Pinterest, X, Snapchat, Apple, Amazon and Microsoft, resolve advertisers and watch competitors via the AdLib API',
 		defaults: {
 			name: 'AdLib',
 		},
