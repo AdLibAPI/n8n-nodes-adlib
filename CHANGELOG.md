@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-28
+
+- **Ad > Get Ad Features** waits while the API is still analysing a video (it now answers 202 `processing` with `retry_after`, free) and asks again until the data is ready, for up to 2 minutes.
+
 ## [0.3.0] - 2026-10-28
 
 - **Advertiser > Report Resolve Match** (`POST /v1/advertisers/resolve/reports`): report a wrong match, a missing match or a wrong role (Report Kind, Domain, Advertiser ID, Role, Note). **Advertiser > List Resolve Reports** (`GET /v1/advertisers/resolve/reports`). Both free.
