@@ -8,6 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
+	sleep,
 } from 'n8n-workflow';
 import { buildProperties } from './descriptions';
 import { DEFAULT_MAX_PAGES, fetchAllPages, listOf } from './pagination';
@@ -43,6 +44,9 @@ function unwrap(body: IDataObject): IDataObject {
 	if (body.meta !== undefined) out._meta = body.meta;
 	return out;
 }
+
+/** How long Get Ad Features waits for a video analysis that is still running. */
+const FEATURES_MAX_WAIT_S = 120;
 
 /** "a,b" for multiOptions values, undefined when empty. */
 function csv(value: unknown): string | undefined {
@@ -228,7 +232,17 @@ async function runOperation(
 		}
 		const id = encodeSegment(ctx.getNodeParameter('adId', i));
 		if (operation === 'getFeatures') {
-			return unwrap(await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}/features`));
+			// A new video analysis answers 202 (processing, free): ask again after
+			// retry_after, for up to FEATURES_MAX_WAIT_S, then return what we have.
+			let waited = 0;
+			for (;;) {
+				const body = await adLibApiRequest.call(ctx, 'GET', `/v1/ads/${id}/features`);
+				const meta = (body.meta ?? {}) as IDataObject;
+				const delay = Math.max(1, Number(meta.retry_after) || 10);
+				if (meta.status !== 'processing' || waited + delay > FEATURES_MAX_WAIT_S) return unwrap(body);
+				await sleep(delay * 1000);
+				waited += delay;
+			}
 		}
 		if (operation === 'get') {
 			return unwrap(

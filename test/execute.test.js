@@ -127,6 +127,18 @@ test('Ad > Get Ad Features returns the features with meta', async () => {
 	assert.equal(out[0].json._meta.ad_id, 'meta:1187430977361020');
 });
 
+test('Ad > Get Ad Features asks again while the API answers processing', async () => {
+	let n = 0;
+	const ctx = fakeContext({ resource: 'ad', operation: 'getFeatures', adId: 'tiktok:1' }, () =>
+		++n < 2
+			? { statusCode: 202, body: { data: null, meta: { ad_id: 'tiktok:1', status: 'processing', retry_after: 1 } } }
+			: { statusCode: 200, body: { data: { format: 'vertical_video' }, meta: { ad_id: 'tiktok:1', status: 'ready' } } },
+	);
+	const [out] = await new AdLib().execute.call(ctx);
+	assert.equal(ctx.requests.length, 2);
+	assert.equal(out[0].json.format, 'vertical_video');
+});
+
 test('Ad > Parse Library URL sends the link', async () => {
 	const link = 'https://www.facebook.com/ads/library/?id=1187430977361020';
 	const ctx = fakeContext(

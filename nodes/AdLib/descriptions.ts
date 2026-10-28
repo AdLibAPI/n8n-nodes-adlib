@@ -124,7 +124,7 @@ export const OPERATIONS: Record<
 			value: 'getFeatures',
 			action: 'Get the creative features of an ad',
 			description:
-				'Hook, offers, urgency, social proof, format, video length, cuts and on-image text of an ad',
+				'Hook, offers, urgency, social proof, format, video length, cuts and on-image text of an ad. Waits up to 2 minutes while a video is analysed.',
 		},
 		{
 			name: 'Get History',
