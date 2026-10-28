@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://adlibapi.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://adlibapi.com/brand/wordmark-dark.png">
+      <img alt="AdLib" src="https://adlibapi.com/brand/wordmark.png" width="260">
+    </picture>
+  </a>
+</p>
+
 # n8n-nodes-adlib – ad library node for n8n
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
